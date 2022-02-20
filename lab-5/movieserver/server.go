@@ -34,14 +34,14 @@ var db database
 // GetMovieInfo implements movieapi.MovieInfoServer
 func (s *server) GetMovieInfo(ctx context.Context, in *movieapi.MovieRequest) (*movieapi.MovieReply, error) {
 	title := in.GetTitle()
-	log.Printf("Received: %v", title)
+	log.Printf("Received GET: %v", title)
 	reply := &movieapi.MovieReply{}
 
 	db.Lock()
 	defer db.Unlock()
 
 	if val, ok := db.moviedb[title]; !ok { // Title not present in database
-		return reply, errors.New("Title not present in database!!!")
+		return reply, errors.New("Not Present in Database")
 	} else {
 		if year, err := strconv.Atoi(val[0]); err != nil {
 			reply.Year = -1
@@ -63,7 +63,7 @@ func (s *server) SetMovieInfo(ctx context.Context, in *movieapi.MovieData) (*mov
 	status := &movieapi.Status{}
 
 	title := in.GetTitle()
-	log.Printf("Received: %v", title)
+	log.Printf("Received SET: %v", title)
 
 	year := in.GetYear()
 	director := in.GetDirector()
@@ -77,7 +77,7 @@ func (s *server) SetMovieInfo(ctx context.Context, in *movieapi.MovieData) (*mov
 		defer db.Unlock()
 
 		if _, ok := db.moviedb[title]; ok {
-			status.Code = "Failed to set Movie info!!!"
+			status.Code = "SET" + " " + title + " " + "FAIL!!!"
 			return status, errors.New("ERROR: Title is already present in database!!!")
 		} else {
 			db.moviedb[title] = append(db.moviedb[title], strconv.FormatInt(int64(year), 10))
@@ -95,7 +95,7 @@ func (s *server) SetMovieInfo(ctx context.Context, in *movieapi.MovieData) (*mov
 
 			db.moviedb[title] = append(db.moviedb[title], castName)
 
-			status.Code = "Movie info Successfully set!!!"
+			status.Code = "SET" + " " + title + " " + "SUSCCESS!!!"
 
 			return status, nil
 		}
@@ -103,7 +103,9 @@ func (s *server) SetMovieInfo(ctx context.Context, in *movieapi.MovieData) (*mov
 }
 
 func main() {
-	db.moviedb = map[string][]string{"Pulp fiction": []string{"1994", "Quentin Tarantino", "John Travolta,Samuel Jackson,Uma Thurman,Bruce Willis"}}
+	db.Lock()
+	defer db.Unlock()
+	db = database{moviedb: map[string][]string{"Pulp fiction": []string{"1994", "Quentin Tarantino", "John Travolta,Samuel Jackson,Uma Thurman,Bruce Willis"}}}
 
 	lis, err := net.Listen("tcp", port)
 	if err != nil {

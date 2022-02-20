@@ -2,9 +2,7 @@
 package main
 
 import (
-	"bufio"
 	"context"
-	"fmt"
 	"labs/lab-5/movieapi"
 	"log"
 	"os"
@@ -20,11 +18,10 @@ const (
 )
 
 var (
-	defaultTitle string
-	title        string
-	year         int32
-	director     string
-	cast         []string
+	title    string
+	year     int32
+	director string
+	cast     []string
 )
 
 func set() {
@@ -41,9 +38,10 @@ func set() {
 	defer cancel()
 	status, err := c.SetMovieInfo(ctx, &movieapi.MovieData{Title: title, Year: year, Director: director, Cast: cast})
 	if err != nil {
-		log.Fatalf("could not get movie info: %v", err)
+		errMsg := "SET" + " " + title + ":"
+		log.Fatalf("%s %v", errMsg, err)
 	}
-	log.Printf("Status Update %s", status.GetCode())
+	log.Printf("%s", status.GetCode())
 }
 
 func get() {
@@ -56,55 +54,67 @@ func get() {
 	c := movieapi.NewMovieInfoClient(conn)
 
 	// Contact the server and print out its response.
-	title := defaultTitle
-	if len(os.Args) > 1 {
-		title = os.Args[1]
-	}
+	t := title
+
 	// Timeout if server doesn't respond
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	r, err := c.GetMovieInfo(ctx, &movieapi.MovieRequest{Title: title})
+	r, err := c.GetMovieInfo(ctx, &movieapi.MovieRequest{Title: t})
 	if err != nil {
-		log.Fatalf("could not get movie info: %v", err)
+		errMsg := "GET" + " " + title + ":"
+		log.Fatalf("%s %v", errMsg, err)
 	}
-	log.Printf("Movie Info for %s %d %s %v", title, r.GetYear(), r.GetDirector(), r.GetCast())
+	log.Printf("Movie Info for %s %d %s %v", t, r.GetYear(), r.GetDirector(), r.GetCast())
 }
 
 func main() {
 	var service string
-	var castNames string
-	s := bufio.NewScanner(os.Stdin)
+	var name []string
+	var yr string
 
-	fmt.Println("Enter type of service:\n 1. Get movie details \n 2. Set movie details")
-
-	if s.Scan() {
-		service = s.Text()
-	}
+	service = os.Args[1]
 
 	if service == "1" {
-		fmt.Println("Enter Movie Name:")
-		if s.Scan() {
-			defaultTitle = s.Text()
+		name = strings.Split(os.Args[2], "_")
+		for i, word := range name {
+			if i == 0 {
+				title = word
+			} else if i == len(cast)-1 {
+				title = title + " " + word
+			} else {
+				title = title + " " + word
+			}
 		}
-
 		get()
+
 	} else {
-		fmt.Println("Enter Movie Details:")
-		if s.Scan() {
-			title = s.Text()
-		}
-		if s.Scan() {
-			i, _ := strconv.Atoi(s.Text())
-			year = int32(i)
-		}
-		if s.Scan() {
-			director = s.Text()
-		}
-		if s.Scan() {
-			castNames = s.Text()
+		name = strings.Split(os.Args[2], "_")
+		for i, word := range name {
+			if i == 0 {
+				title = word
+			} else if i == len(cast)-1 {
+				title = title + " " + word
+			} else {
+				title = title + " " + word
+			}
 		}
 
-		cast = strings.Split(castNames, ",")
+		yr = os.Args[3]
+		i, _ := strconv.Atoi(yr)
+		year = int32(i)
+
+		name = strings.Split(os.Args[4], "_")
+		for i, word := range name {
+			if i == 0 {
+				director = word
+			} else if i == len(cast)-1 {
+				director = director + " " + word
+			} else {
+				director = director + " " + word
+			}
+		}
+
+		cast = strings.Split(os.Args[5], ",")
 
 		set()
 	}
