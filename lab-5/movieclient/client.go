@@ -2,11 +2,13 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"labs/lab-5/movieapi"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,15 +16,15 @@ import (
 )
 
 const (
-	address      = "localhost:50051"
-	defaultTitle = "Pulp fiction"
+	address = "localhost:50051"
 )
 
 var (
-	title    string
-	year     int32
-	director string
-	cast     []string
+	defaultTitle string
+	title        string
+	year         int32
+	director     string
+	cast         []string
 )
 
 func set() {
@@ -71,19 +73,36 @@ func get() {
 func main() {
 	var service string
 	var castNames string
+	s := bufio.NewScanner(os.Stdin)
 
 	fmt.Println("Enter type of service:\n 1. Get movie details \n 2. Set movie details")
 
-	fmt.Scanln(&service)
+	if s.Scan() {
+		service = s.Text()
+	}
 
 	if service == "1" {
+		fmt.Println("Enter Movie Name:")
+		if s.Scan() {
+			defaultTitle = s.Text()
+		}
+
 		get()
 	} else {
 		fmt.Println("Enter Movie Details:")
-		fmt.Scanln(&title)
-		fmt.Scanln(&year)
-		fmt.Scanln(&director)
-		fmt.Scanln(&castNames)
+		if s.Scan() {
+			title = s.Text()
+		}
+		if s.Scan() {
+			i, _ := strconv.Atoi(s.Text())
+			year = int32(i)
+		}
+		if s.Scan() {
+			director = s.Text()
+		}
+		if s.Scan() {
+			castNames = s.Text()
+		}
 
 		cast = strings.Split(castNames, ",")
 

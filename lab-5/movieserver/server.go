@@ -9,6 +9,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 
 	"google.golang.org/grpc"
 )
@@ -23,15 +24,24 @@ type server struct {
 }
 
 // Map representing a database
-var moviedb = map[string][]string{"Pulp fiction": []string{"1994", "Quentin Tarantino", "John Travolta,Samuel Jackson,Uma Thurman,Bruce Willis"}}
+type database struct {
+	moviedb map[string][]string
+	sync.RWMutex
+}
+
+var db database
 
 // GetMovieInfo implements movieapi.MovieInfoServer
 func (s *server) GetMovieInfo(ctx context.Context, in *movieapi.MovieRequest) (*movieapi.MovieReply, error) {
 	title := in.GetTitle()
 	log.Printf("Received: %v", title)
 	reply := &movieapi.MovieReply{}
-	if val, ok := moviedb[title]; !ok { // Title not present in database
-		return reply, nil
+
+	db.Lock()
+	defer db.Unlock()
+
+	if val, ok := db.moviedb[title]; !ok { // Title not present in database
+		return reply, errors.New("Title not present in database!!!")
 	} else {
 		if year, err := strconv.Atoi(val[0]); err != nil {
 			reply.Year = -1
@@ -53,36 +63,48 @@ func (s *server) SetMovieInfo(ctx context.Context, in *movieapi.MovieData) (*mov
 	status := &movieapi.Status{}
 
 	title := in.GetTitle()
+	log.Printf("Received: %v", title)
+
 	year := in.GetYear()
 	director := in.GetDirector()
 	cast := in.GetCast()
 
-	if (title == "") || (director == "") || (year == 0) || (len(cast) == 0) {
+	if (title == "") || (director == "") || (year <= 0) || (len(cast) == 0) { //Checking for Invalid Input
 		status.Code = "Failed to set Movie info!!!"
 		return status, errors.New("ERROR: Invalid Input!!!")
-	} else {
-		moviedb[title] = append(moviedb[title], strconv.FormatInt(int64(year), 10))
-		moviedb[title] = append(moviedb[title], director)
+	} else { //Valid Input Provided
+		db.Lock()
+		defer db.Unlock()
 
-		for i, name := range cast {
-			if i == 0 {
-				castName = name + ","
-			} else if i == len(cast)-1 {
-				castName = castName + name
-			} else {
-				castName = castName + name + ","
+		if _, ok := db.moviedb[title]; ok {
+			status.Code = "Failed to set Movie info!!!"
+			return status, errors.New("ERROR: Title is already present in database!!!")
+		} else {
+			db.moviedb[title] = append(db.moviedb[title], strconv.FormatInt(int64(year), 10))
+			db.moviedb[title] = append(db.moviedb[title], director)
+
+			for i, name := range cast {
+				if i == 0 {
+					castName = name + ","
+				} else if i == len(cast)-1 {
+					castName = castName + name
+				} else {
+					castName = castName + name + ","
+				}
 			}
+
+			db.moviedb[title] = append(db.moviedb[title], castName)
+
+			status.Code = "Movie info Successfully set!!!"
+
+			return status, nil
 		}
-
-		moviedb[title] = append(moviedb[title], castName)
-
-		status.Code = "Movie info Successfully set!!!"
-
-		return status, nil
 	}
 }
 
 func main() {
+	db.moviedb = map[string][]string{"Pulp fiction": []string{"1994", "Quentin Tarantino", "John Travolta,Samuel Jackson,Uma Thurman,Bruce Willis"}}
+
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
