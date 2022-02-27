@@ -70,7 +70,7 @@ func (s *server) SetMovieInfo(ctx context.Context, in *movieapi.MovieData) (*mov
 	cast := in.GetCast()
 
 	if (title == "") || (director == "") || (year <= 0) || (len(cast) == 0) { //Checking for Invalid Input
-		status.Code = "Failed to set Movie info!!!"
+		status.Code = "SET" + " " + title + " " + "FAIL!!!"
 		return status, errors.New("ERROR: Invalid Input!!!")
 	} else { //Valid Input Provided
 		db.Lock()
